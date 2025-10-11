@@ -33,7 +33,7 @@ public:
         , k1_(get_parameter("k1").as_double())
         , k2_(get_parameter("k2").as_double())
         , no_load_power_(get_parameter("no_load_power").as_double())
-        , control_acceleration_filter_(5.0, 1000.0)
+        , control_acceleration_filter_(5.0, 1000.0) 
         , chassis_velocity_expected_(Eigen::Vector3d::Zero())
         , chassis_translational_velocity_pid_(5.0, 0.0, 1.0)
         , chassis_angular_velocity_pid_(5.0, 0.0, 1.0)
@@ -76,7 +76,8 @@ public:
 
         register_output(
             "/chassis/left_front_wheel/control_torque", left_front_wheel_control_torque_);
-        register_output("/chassis/left_back_wheel/control_torque", left_back_wheel_control_torque_);
+        register_output(
+            "/chassis/left_back_wheel/control_torque", left_back_wheel_control_torque_);
         register_output(
             "/chassis/right_back_wheel/control_torque", right_back_wheel_control_torque_);
         register_output(
@@ -107,7 +108,7 @@ public:
         auto wheel_pid_torques =
             calculate_wheel_pid_torques(steering_status, wheel_velocities, chassis_status_expected);
 
-        auto constrained_chassis_acceleration = constrain_chassis_control_acceleration(
+/*功率 */auto constrained_chassis_acceleration = constrain_chassis_control_acceleration(
             steering_status, wheel_velocities, chassis_acceleration, wheel_pid_torques,
             power_limit);
         auto filtered_chassis_acceleration =
@@ -208,7 +209,7 @@ private:
                  + moment_of_inertia_ * velocity.z() * velocity.z();
         };
         auto chassis_energy = calculate_energy(chassis_velocity);
-        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_);
+        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_); /* 在哪里更新？，应该是遥控器 */
         if (chassis_energy_expected > chassis_energy) {
             double k = std::sqrt(chassis_energy / chassis_energy_expected);
             chassis_velocity_expected_ *= k;
@@ -218,7 +219,7 @@ private:
         chassis_status_expected.velocity = odom_to_base_link_vector(chassis_velocity_expected_);
 
         const auto& [vx, vy, vz] = chassis_status_expected.velocity;
-        chassis_status_expected.wheel_velocity_x = vx - vehicle_radius_ * vz * sin_varphi_.array();
+        chassis_status_expected.wheel_velocity_x = vx - vehicle_radius_ * vz * sin_varphi_.array();  /* sin,cos是向量用叉乘 ，w*r叉乘（cos x,sin x） */
         chassis_status_expected.wheel_velocity_y = vy + vehicle_radius_ * vz * cos_varphi_.array();
 
         return chassis_status_expected;
@@ -232,7 +233,7 @@ private:
         return chassis_control_velocity;
     }
 
-    Eigen::Vector3d calculate_chassis_control_acceleration(
+    Eigen::Vector3d calculate_chassis_control_acceleration(             /*  */
         const Eigen::Vector3d& chassis_velocity_expected,
         const Eigen::Vector3d& chassis_control_velocity) {
 

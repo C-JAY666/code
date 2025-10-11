@@ -29,6 +29,12 @@
   <class type="rmcs_core::controller::chassis::SteeringWheelController" base_class_type="rmcs_executor::Component">
     <description>Steering wheel controller.</description>
   </class>
+  <class type="rmcs_core::controller::chassis::SimplePowerProvider" base_class_type="rmcs_executor::Component">
+    <description>Simple fixed power provider for testing.</description>
+  </class>
+  <class type="rmcs_core::controller::chassis::SimpleChassisCommander" base_class_type="rmcs_executor::Component">
+    <description>Simple chassis commander for testing without remote control.</description>
+  </class>
   <class type="rmcs_core::controller::gimbal::SimpleGimbalController" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
@@ -71,6 +77,9 @@
   <class type="rmcs_core::broadcaster::ValueBroadcaster" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
+  <class type="rmcs_core::broadcaster::DummyRemote" base_class_type="rmcs_executor::Component">
+    <description>Dummy remote control for testing without hardware.</description>
+  </class>
   <class type="rmcs_core::hardware::cboard::Command" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
@@ -96,6 +105,9 @@
     <description>Test plugin.</description>
   </class>
   <class type="rmcs_core::referee::app::ui::Hero" base_class_type="rmcs_executor::Component">
+    <description>Test plugin.</description>
+  </class>
+  <class type="rmcs_core::hardware::Test" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
 </library>

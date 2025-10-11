@@ -21,7 +21,7 @@ public:
         , kd(std::move(kd)) {
         integral_min.setConstant(-inf);
         integral_max.setConstant(inf);
-        output_min.setConstant(-inf);
+        output_min.setConstant(-inf);/* 把向量的所有元素设为同一个值 */
         output_max.setConstant(inf);
         reset();
     }
