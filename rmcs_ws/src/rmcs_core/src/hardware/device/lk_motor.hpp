@@ -106,7 +106,7 @@ public:
                 if (!control_angle_.ready())
                     control_angle_.bind_directly(nan_);
                 if (!control_velocity_.ready())
-                    control_velocity_.bind_directly(nan_);
+                    control_velocity_.bind_directly(nan_);//这是一个方法，将输入接口直接绑定到一个值
                 if (!control_torque_.ready())
                     control_torque_.bind_directly(nan_);
             }

@@ -125,7 +125,7 @@ public:
         bool activated = false;
     };
 
-    const std::string& get_component_name() { return component_name_; }
+      const std::string& get_component_name() { return component_name_; }
 
     template <typename T>
     void register_input(

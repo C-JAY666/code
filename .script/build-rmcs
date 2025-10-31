@@ -2,6 +2,8 @@
 
 source /opt/ros/jazzy/setup.bash
 
-cd ${RMCS_PATH}/rmcs_ws
+# 获取脚本所在目录并导航到 rmcs_ws
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}/../rmcs_ws"
 
 colcon build --symlink-install --merge-install

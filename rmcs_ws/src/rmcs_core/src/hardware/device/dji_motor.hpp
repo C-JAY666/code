@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <librmcs/device/dji_motor.hpp>
 #include <rmcs_executor/component.hpp>
 
@@ -11,12 +12,14 @@ public:
         rmcs_executor::Component& status_component, rmcs_executor::Component& command_component,
         const std::string& name_prefix)
         : librmcs::device::DjiMotor() {
+        std::cout << "DjiMotor constructor: Registering " << name_prefix << std::endl;
         status_component.register_output(name_prefix + "/angle", angle_, 0.0);
         status_component.register_output(name_prefix + "/velocity", velocity_, 0.0);
         status_component.register_output(name_prefix + "/torque", torque_, 0.0);
         status_component.register_output(name_prefix + "/max_torque", max_torque_, 0.0);
 
         command_component.register_input(name_prefix + "/control_torque", control_torque_, false);
+        std::cout << "DjiMotor constructor: Registered all interfaces for " << name_prefix << std::endl;
     }
 
     DjiMotor(
@@ -40,7 +43,7 @@ public:
     }
 
     double control_torque() const {
-        if (control_torque_.ready()) [[likely]]
+        if (control_torque_.ready()) [[likely]] //编译器优化提示，这个分支更可能执行
             return *control_torque_;
         else
             return 0.0;

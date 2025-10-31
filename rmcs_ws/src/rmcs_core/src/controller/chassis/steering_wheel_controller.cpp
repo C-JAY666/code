@@ -102,7 +102,7 @@ public:
         auto chassis_acceleration = calculate_chassis_control_acceleration(
             chassis_status_expected.velocity, chassis_control_velocity);
 
-        double power_limit =
+        double power_limit =   /* 计算剩余可用功率 */ 
             *power_limit_ - no_load_power_ - k2_ * wheel_velocities.array().pow(2).sum();
 
         auto wheel_pid_torques =
@@ -154,7 +154,7 @@ private:
 
     void integral_yaw_angle_imu() {
         chassis_yaw_angle_imu_ += *chassis_yaw_velocity_imu_ * dt_;
-        chassis_yaw_angle_imu_ = std::fmod(chassis_yaw_angle_imu_, 2 * std::numbers::pi);
+        chassis_yaw_angle_imu_ = std::fmod(chassis_yaw_angle_imu_, 2 * std::numbers::pi);/* 取余 */
     }
 
     SteeringStatus calculate_steering_status() {
@@ -209,7 +209,7 @@ private:
                  + moment_of_inertia_ * velocity.z() * velocity.z();
         };
         auto chassis_energy = calculate_energy(chassis_velocity);
-        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_); /* 在哪里更新？，应该是遥控器 */
+        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_); /* 在哪里更新？， */
         if (chassis_energy_expected > chassis_energy) {
             double k = std::sqrt(chassis_energy / chassis_energy_expected);
             chassis_velocity_expected_ *= k;
@@ -233,7 +233,7 @@ private:
         return chassis_control_velocity;
     }
 
-    Eigen::Vector3d calculate_chassis_control_acceleration(             /*  */
+    Eigen::Vector3d calculate_chassis_control_acceleration(             
         const Eigen::Vector3d& chassis_velocity_expected,
         const Eigen::Vector3d& chassis_control_velocity) {
 
@@ -274,16 +274,16 @@ private:
         const double& power_limit) {
 
         Eigen::Vector2d translational_acceleration_direction = chassis_acceleration.head<2>();
-        double translational_acceleration_max = translational_acceleration_direction.norm();
+        double translational_acceleration_max = translational_acceleration_direction.norm();/* L2范数（模长） */
         if (translational_acceleration_max > 0.0)
             translational_acceleration_direction /= translational_acceleration_max;
 
         double angular_acceleration_max = chassis_acceleration.z();
         double angular_acceleration_direction = angular_acceleration_max > 0 ? 1.0 : -1.0;
-        angular_acceleration_max *= angular_acceleration_direction;
+        angular_acceleration_max *= angular_acceleration_direction; /* 取绝对值 */
 
         const double rhombus_right = friction_coefficient_ * g_;
-        const double rhombus_top = rhombus_right * mess_ * vehicle_radius_ / moment_of_inertia_;
+        const double rhombus_top = rhombus_right * mess_ * vehicle_radius_ / moment_of_inertia_; /*a = F/I */
 
         auto [a, b, c, d, e, f] = calculate_ellipse_parameters(
             steering_status, wheel_velocities, translational_acceleration_direction,

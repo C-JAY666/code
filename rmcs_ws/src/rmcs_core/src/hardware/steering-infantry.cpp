@@ -341,7 +341,7 @@ private:
                 transmit_buffer_.trigger_transmission();
                 for (int i = 0; i < 4; i++) {
                     batch_commands[i] = chassis_steer_motors_[i].generate_command();
-                }
+                } 
                 transmit_buffer_.add_can2_transmission(
                     0x1FE, std::bit_cast<uint64_t>(batch_commands));
                 transmit_buffer_.trigger_transmission();
@@ -350,7 +350,7 @@ private:
                     0x142, gimbal_yaw_motor_.generate_velocity_command(
                                gimbal_yaw_motor_.control_velocity() - imu_.gy()));
                 transmit_buffer_.trigger_transmission();
-            }
+            } 
             can_transmission_mode = !can_transmission_mode;
         }
 

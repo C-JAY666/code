@@ -46,7 +46,7 @@ class MyLaunchDescriptionEntity(LaunchDescriptionEntity):
                 ],
                 respawn=True,
                 respawn_delay=1.0,
-                output="log",  # stdout and stderr are logged to launch log file and stderr to the screen.
+                output="screen",  # stdout and stderr are logged to launch log file and stderr to the screen.
             )
         )
 

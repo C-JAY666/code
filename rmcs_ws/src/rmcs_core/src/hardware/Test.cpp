@@ -1,14 +1,17 @@
+#include <cstdint>
 #include <memory>
 
+#include <rclcpp/logging.hpp>
 #include <rclcpp/node.hpp>
 #include <rclcpp/logger.hpp>
 #include <rmcs_executor/component.hpp>
 #include <rmcs_description/tf_description.hpp>
 #include <std_msgs/msg/int32.hpp>
 
-#include <librmcs/client/cboard.hpp>
+#include <librmcs/client/dm_mc02.hpp>
 
 #include "hardware/device/dji_motor.hpp"
+#include "hardware/device/vesc_motor.hpp"
 
 namespace rmcs_core::hardware {
 
@@ -36,11 +39,13 @@ public:
     ~Test() override = default;
     
     void update() override {
-        bottom_board_->update();
+
+         bottom_board_->update();
     }
     
     void command_update() {
-        bottom_board_->command_update();
+
+          bottom_board_->command_update();
     }
 
 private:
@@ -70,13 +75,13 @@ private:
         Test& test;
    };
 
-class BottomBoard final : private librmcs::client::CBoard 
+class BottomBoard final : private librmcs::client::DMH7Board 
 {
     public:
         friend class Test;
         explicit BottomBoard(
             Test& test, TestCommand& test_command, int usb_pid = -1)
-            : librmcs::client::CBoard(usb_pid)
+            : librmcs::client::DMH7Board(usb_pid)
             , gimbal_clip_turner_(test, test_command, "/gimbal/clip_turner")
             , rack_suction_telescopic_(test, test_command, "/rack/suction_telescopic")
             , chassis_wheel_motors_(
@@ -90,7 +95,9 @@ class BottomBoard final : private librmcs::client::CBoard
                 {test, test_command, "/chassis/right_back_steering"},
                 {test, test_command, "/chassis/right_front_steering"})
             , transmit_buffer_(*this, 32)
-            , event_thread_([this]() { handle_events(); })
+            , event_thread_([this]()    { std::cout << "=== Event thread STARTED ===" << std::endl;
+            handle_events(); 
+            std::cout << "=== Event thread ENDED ===" << std::endl;})
             {
                 gimbal_clip_turner_.configure(
                     device::DjiMotor::Config{device::DjiMotor::Type::M2006}
@@ -105,11 +112,10 @@ class BottomBoard final : private librmcs::client::CBoard
             
                 for (auto& motor : chassis_wheel_motors_)
                     motor.configure(
-                        device::DjiMotor::Config{device::DjiMotor::Type::M3508}
-                            .set_reduction_ratio(11)
-                            .enable_multi_turn_angle()
-                            .set_reversed());
-
+                        device::VescMotor::Config()
+                        .set_reversed()
+                        .enable_multi_turn_angle() 
+                    );
                 chassis_steer_motors_[0].configure(
                     device::DjiMotor::Config{device::DjiMotor::Type::GM6020}
                         .set_reversed()
@@ -137,6 +143,8 @@ class BottomBoard final : private librmcs::client::CBoard
                         .set_encoder_zero_point(
                             static_cast<int>(test.get_parameter("right_front_zero_point").as_int()))
                         .enable_multi_turn_angle());
+                        
+
             }
 
         ~BottomBoard() final {
@@ -145,72 +153,115 @@ class BottomBoard final : private librmcs::client::CBoard
         }
 
         void update() {
-            gimbal_clip_turner_.update_status();
-            rack_suction_telescopic_.update_status();
+
+
+            // gimbal_clip_turner_.update_status();
+            // rack_suction_telescopic_.update_status();
+           // if (update_counter % 4 == 0) {
             for (auto& motor : chassis_wheel_motors_)
                 motor.update_status();
             for (auto& motor : chassis_steer_motors_)
                 motor.update_status();
-        }
+        //}
+    }
         void command_update() {
             uint16_t can_commands[4];
-            for (int i = 0; i < 4; i++)
-                can_commands[i] = chassis_wheel_motors_[i].generate_command();
-                transmit_buffer_.add_can1_transmission(0x200, std::bit_cast<uint64_t>(can_commands));
-                transmit_buffer_.add_can1_transmission(0x1FF, gimbal_clip_turner_.generate_command());
+            for (int i = 0; i < 4; i++) {
+               /* double rpm_A = chassis_wheel_motors_[i].generate_command(); */
+               double current_A = chassis_wheel_motors_[i].generate_command();
+                int32_t current_mA = static_cast<int32_t>(current_A * 1000);
+               uint32_t current_be = __builtin_bswap32(std::bit_cast<uint32_t>(current_mA)); 
+/*                int32_t erpm = static_cast<int32_t>(rpm_A);
+               uint32_t rpm_be = __builtin_bswap32(std::bit_cast<uint32_t>(erpm)); */
+               RCLCPP_INFO(rclcpp::get_logger("BB"), " %d rpm: %d", i+1,current_mA);
+               
+               
+               uint8_t motor_id = i ;
+               uint32_t can_id = motor_id | (3 << 8);
 
-                if (can_transmission_mode) {
+               transmit_buffer_.add_can1_transmission(can_id, static_cast<uint64_t>(current_be),
+            true, false, 4);
+
+            }
+            // transmit_buffer_.add_can1_transmission(0x200, std::bit_cast<uint64_t>(can_commands));
+            // transmit_buffer_.add_can1_transmission(0x1FF, gimbal_clip_turner_.generate_command());
+
+        
+           if (can_transmission_mode) {
+            transmit_buffer_.trigger_transmission();
                     for (int i = 0; i < 4; i++) {
                         can_commands[i] = chassis_steer_motors_[i].generate_command();
+                        
                     }
                     transmit_buffer_.add_can2_transmission(
                         0x1FE, std::bit_cast<uint64_t>( can_commands));
-                    transmit_buffer_.trigger_transmission();
-                } else {
-                    transmit_buffer_.add_can1_transmission(0x1FF, rack_suction_telescopic_.generate_command());
-                    // transmit_buffer_.add_can3_transmission(0x666, )
-                    transmit_buffer_.trigger_transmission();
+                        transmit_buffer_.trigger_transmission();
+                        //RCLCPP_INFO(rclcpp::get_logger("BB"), "Trigger Can2 transmission on port success");
                 }
-                can_transmission_mode = !can_transmission_mode;
-            
+        else {
+        transmit_buffer_.trigger_transmission();
+        //RCLCPP_INFO(rclcpp::get_logger("BB"), "Trigger Can1 transmission on port success");
+
+        }
+                    // transmit_buffer_.add_can1_transmission(0x1FF, rack_suction_telescopic_.generate_command());
+                    //  transmit_buffer_.add_can1_transmission(0x666, 0x777);/* 通信，没测 */
+
+            //    can_transmission_cycle = (can_transmission_cycle +1 ) % 2 ;  
+            can_transmission_mode = !can_transmission_mode;
         }
         void can1_receive_callback(
             uint32_t can_id, uint64_t can_data, bool is_extended_can_id,
             bool is_remote_transmission, uint8_t can_data_length) override {
-            if (is_extended_can_id || is_remote_transmission || can_data_length < 8) [[unlikely]]
+                std::cout << "[RX CAN1] ID=0x" << std::hex << can_id << std::dec << std::endl;  // 每次都输出
+                
+            if (is_remote_transmission) [[unlikely]]
                 return;
-            if (can_id == 0x201)
-                chassis_wheel_motors_[0].store_status(can_data);
-            else if (can_id == 0x202)
-                chassis_wheel_motors_[1].store_status(can_data);
-            else if (can_id == 0x203)
-                chassis_wheel_motors_[2].store_status(can_data);
-            else if (can_id == 0x204)
-                chassis_wheel_motors_[3].store_status(can_data);
+            
+              if(is_extended_can_id){
+                uint8_t motor_id = can_id & 0xFF;
+                if (motor_id >= 1 && motor_id <= 4) {
+                    chassis_wheel_motors_[motor_id - 1].store_status(can_id, can_data);
+                }
+                return;
+            }
+             
+            // DJI电机使用标准ID，需要8字节数据
+/*             if (can_data_length < 8)
+                return; */
+            
         }
+
         void can2_receive_callback(
             uint32_t can_id, uint64_t can_data, bool is_extended_can_id,
             bool is_remote_transmission, uint8_t can_data_length) override {
+
+        std::cout << "[RX CAN2] ID=0x" << std::hex << can_id << std::dec << std::endl;  // 每次都输出
+
             if (is_extended_can_id || is_remote_transmission || can_data_length < 8) [[unlikely]]
                 return;
-            else if (can_id == 0x205)
+            if (can_id == 0x205)
                 chassis_steer_motors_[0].store_status(can_data);
+             
             else if (can_id == 0x206)
                 chassis_steer_motors_[1].store_status(can_data);
+   
             else if (can_id == 0x207)
                 chassis_steer_motors_[2].store_status(can_data);
+
             else if (can_id == 0x208)
                 chassis_steer_motors_[3].store_status(can_data);
+    
         }
     private:
         bool can_transmission_mode = true;
+        //uint8_t can_transmission_cycle = 0;
 
         device::DjiMotor gimbal_clip_turner_;
         device::DjiMotor rack_suction_telescopic_;
-        device::DjiMotor chassis_wheel_motors_[4];
+        device::VescMotor chassis_wheel_motors_[4];
         device::DjiMotor chassis_steer_motors_[4];
 
-        librmcs::client::CBoard::TransmitBuffer transmit_buffer_;
+        librmcs::client::DMH7Board::TransmitBuffer transmit_buffer_;
         std::thread event_thread_;
 
 
