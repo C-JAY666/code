@@ -17,7 +17,7 @@ requires(variable_number > 0) class LowPassFilter {
         if constexpr (variable_number == 1)
             return std::numeric_limits<double>::quiet_NaN();
         else
-            return Eigen::Vector<double, variable_number>::Constant(
+            return Eigen::Vector<double, variable_number>::Constant(    //Constant 是 Eigen 库的静态方法，用于创建一个所有元素都相同的向量或矩阵。
                 std::numeric_limits<double>::quiet_NaN());
     }
 

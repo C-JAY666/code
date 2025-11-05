@@ -14,14 +14,14 @@
 
 namespace rmcs_core::controller::chassis {
 
-class SteeringWheelController
+class VescT4SteeringWheelController
     : public rmcs_executor::Component
     , public rclcpp::Node {
 
     using Formula = std::tuple<double, double, double>;
 
 public:
-    explicit SteeringWheelController()
+    explicit VescT4SteeringWheelController()
         : Node(
               get_component_name(),
               rclcpp::NodeOptions{}.automatically_declare_parameters_from_overrides(true))
@@ -30,18 +30,15 @@ public:
         , vehicle_radius_(get_parameter("vehicle_radius").as_double())
         , wheel_radius_(get_parameter("wheel_radius").as_double())
         , friction_coefficient_(get_parameter("friction_coefficient").as_double())
-        , k1_(get_parameter("k1").as_double())
-        , k2_(get_parameter("k2").as_double())
-        , no_load_power_(get_parameter("no_load_power").as_double())
         , control_acceleration_filter_(5.0, 1000.0) 
         , chassis_velocity_expected_(Eigen::Vector3d::Zero())
-        , chassis_translational_velocity_pid_(1.0, 0.0, 1.0)
-        , chassis_angular_velocity_pid_(1.0, 0.0, 1.0)
+        , chassis_translational_velocity_pid_(1, 0.0, 0.5)
+        , chassis_angular_velocity_pid_(1, 0.0, 0.5)
         , cos_varphi_(1, 0, -1, 0) // 0, pi/2, pi, 3pi/2
         , sin_varphi_(0, 1, 0, -1)
         , steering_velocity_pid_(0.15, 0.0, 0.0)
         , steering_angle_pid_(30.0, 0.0, 0.0)
-        , wheel_velocity_pid_(0.6, 0.0, 0.0) {
+        , wheel_velocity_pid_(0.1, 0.0, 0.0) {
 
         register_input("/remote/joystick/right", joystick_right_);
         register_input("/remote/joystick/left", joystick_left_);
@@ -102,15 +99,13 @@ public:
         auto chassis_acceleration = calculate_chassis_control_acceleration(
             chassis_status_expected.velocity, chassis_control_velocity);
 
-        double power_limit =   /* 计算剩余可用功率 */ 
-            *power_limit_ - no_load_power_ - k2_ * wheel_velocities.array().pow(2).sum();//
 
         auto wheel_pid_torques =
             calculate_wheel_pid_torques(steering_status, wheel_velocities, chassis_status_expected);
 
+            
 /*功率 */auto constrained_chassis_acceleration = constrain_chassis_control_acceleration(
-            steering_status, wheel_velocities, chassis_acceleration, wheel_pid_torques,
-            power_limit);
+           chassis_acceleration);
         auto filtered_chassis_acceleration =                      //将约束后的加速度转换到odom坐标系 并进行低通滤波，在转换为base_link坐标系
             odom_to_base_link_vector(control_acceleration_filter_.update(
                 base_link_to_odom_vector(constrained_chassis_acceleration)));
@@ -119,7 +114,27 @@ public:
             steering_status, chassis_status_expected, filtered_chassis_acceleration);
         auto wheel_torques = calculate_wheel_control_torques(
             steering_status, filtered_chassis_acceleration, wheel_pid_torques);
+/*              RCLCPP_INFO(get_logger(), "Wheel torques: [%.3f, %.3f, %.3f, %.3f]",
+            wheel_torques[0], wheel_torques[1], 
+            wheel_torques[2], wheel_torques[3]);
+            RCLCPP_INFO(get_logger(), "Wheel PID torques: [%.3f, %.3f, %.3f, %.3f]",
+    wheel_pid_torques[0], wheel_pid_torques[1], 
+    wheel_pid_torques[2], wheel_pid_torques[3]);
+    RCLCPP_INFO(get_logger(), "Wheel velocities (actual): [%.3f, %.3f, %.3f, %.3f]",
+    wheel_velocities[0], wheel_velocities[1], 
+    wheel_velocities[2], wheel_velocities[3]);
 
+// 还要看目标速度
+RCLCPP_INFO(get_logger(), "Wheel velocities (expected): [%.3f, %.3f, %.3f, %.3f]",
+chassis_status_expected.wheel_velocity_x[0] * steering_status.cos_angle[0] + 
+chassis_status_expected.wheel_velocity_y[0] * steering_status.sin_angle[0],
+chassis_status_expected.wheel_velocity_x[1] * steering_status.cos_angle[1] + 
+chassis_status_expected.wheel_velocity_y[1] * steering_status.sin_angle[1],
+chassis_status_expected.wheel_velocity_x[2] * steering_status.cos_angle[2] + 
+chassis_status_expected.wheel_velocity_y[2] * steering_status.sin_angle[2],
+chassis_status_expected.wheel_velocity_x[3] * steering_status.cos_angle[3] + 
+chassis_status_expected.wheel_velocity_y[3] * steering_status.sin_angle[3]); 
+ */
         update_control_torques(steering_torques, wheel_torques);
         update_chassis_velocity_expected(filtered_chassis_acceleration);
     }
@@ -252,7 +267,7 @@ private:
         chassis_control_acceleration << translational_control_acceleration,
             angular_control_acceleration;
 
-        if (chassis_control_acceleration.lpNorm<1>() < 1e-1)           //lpNorm<1>为L1范数（模长）
+        if (chassis_control_acceleration.lpNorm<1>() < 1e-2)           //lpNorm<1>为L1范数（模长）/////////
             chassis_control_acceleration.setZero();                   //置零
 
         return chassis_control_acceleration;
@@ -269,9 +284,7 @@ private:
     }
 
     Eigen::Vector3d constrain_chassis_control_acceleration(
-        const SteeringStatus& steering_status, const Eigen::Vector4d& wheel_velocities,
-        const Eigen::Vector3d& chassis_acceleration, const Eigen::Vector4d& wheel_pid_torques,
-        const double& power_limit) {
+        const Eigen::Vector3d& chassis_acceleration) {
 
         Eigen::Vector2d translational_acceleration_direction = chassis_acceleration.head<2>();
         double translational_acceleration_max = translational_acceleration_direction.norm();/* L2范数（模长） */
@@ -285,13 +298,19 @@ private:
         const double rhombus_right = friction_coefficient_ * g_;                                   //最大平移加速度
         const double rhombus_top = rhombus_right * mess_ * vehicle_radius_ / moment_of_inertia_; /*最大角加速度  a = t/I   t = u x m x g x r */
 
-        auto [a, b, c, d, e, f] = calculate_ellipse_parameters(
-            steering_status, wheel_velocities, translational_acceleration_direction,
-            angular_acceleration_direction, wheel_pid_torques);
+
+        QcpSolver::QuadraticConstraint no_power_constraint{
+            .a = 0.0,
+            .b = 0.0,
+            .c = 0.0,
+            .d = 0.0,
+            .e = 0.0,
+            .f = -1e10  // 巨大的负数，使椭圆约束永远满足
+        };
 
         Eigen::Vector2d best_point = qcp_solver_.solve(
             {1.0, 0.2}, {translational_acceleration_max, angular_acceleration_max},
-            {rhombus_right, rhombus_top}, {a, b, c, d, e, f - power_limit});
+            {rhombus_right, rhombus_top}, {no_power_constraint});
 
         Eigen::Vector3d best_acceleration;
         best_acceleration << best_point.x() * translational_acceleration_direction,
@@ -299,44 +318,7 @@ private:
         return best_acceleration;
     }
 
-    Eigen::Vector<double, 6> calculate_ellipse_parameters(                                   //计算功率限制的椭圆约束
-        const SteeringStatus& steering_status, const Eigen::Vector4d& wheel_velocities,
-        const Eigen::Vector2d& translational_acceleration_direction,
-        const double& angular_acceleration_direction, const Eigen::Vector4d& wheel_torque_base) {
-        Eigen::Vector4d cos_alpha_minus_gamma =
-            steering_status.cos_angle.array() * translational_acceleration_direction.x()
-            + steering_status.sin_angle.array() * translational_acceleration_direction.y();
-        Eigen::Vector4d sin_alpha_minus_varphi =
-            cos_varphi_.array() * steering_status.sin_angle.array()
-            - sin_varphi_.array() * steering_status.cos_angle.array();
-        Eigen::Vector4d double_k1_torque_base_plus_wheel_velocities =
-            2 * k1_ * wheel_torque_base.array() + wheel_velocities.array();
 
-        Eigen::Vector<double, 6> formula;
-        auto& [a, b, c, d, e, f] = formula;
-
-        a = (k1_ * mess_ * mess_ * wheel_radius_ * wheel_radius_ / 16.0)
-          * cos_alpha_minus_gamma.array().pow(2).sum();
-        b = ((k1_ * mess_ * moment_of_inertia_ * wheel_radius_ * wheel_radius_)
-             / (8.0 * vehicle_radius_))
-          * angular_acceleration_direction
-          * (cos_alpha_minus_gamma.array() * sin_alpha_minus_varphi.array()).sum();
-        c = ((k1_ * moment_of_inertia_ * moment_of_inertia_ * wheel_radius_ * wheel_radius_)
-             / (16.0 * vehicle_radius_ * vehicle_radius_))
-          * sin_alpha_minus_varphi.array().pow(2).sum();
-        d = (mess_ * wheel_radius_ / 4.0)
-          * (double_k1_torque_base_plus_wheel_velocities.array() * cos_alpha_minus_gamma.array())
-                .sum();
-        e = ((moment_of_inertia_ * wheel_radius_) / (4.0 * vehicle_radius_))
-          * angular_acceleration_direction
-          * (double_k1_torque_base_plus_wheel_velocities.array() * sin_alpha_minus_varphi.array())
-                .sum();
-        f = (wheel_torque_base.array()
-             * (k1_ * wheel_torque_base.array() + wheel_velocities.array()))
-                .sum();
-
-        return formula;
-    }
 
     Eigen::Vector4d calculate_steering_control_torques(
         const SteeringStatus& steering_status, const ChassisStatus& chassis_status_expected,
@@ -404,7 +386,7 @@ private:
                      / vehicle_radius_)
             / 4.0;
 
-        //wheel_torques += wheel_pid_torques;
+       // wheel_torques += wheel_pid_torques;
 
         return wheel_torques;
     }
@@ -420,6 +402,7 @@ private:
         *left_back_wheel_control_torque_ = wheel_torques[1];
         *right_back_wheel_control_torque_ = wheel_torques[2];
         *right_front_wheel_control_torque_ = wheel_torques[3];
+   
     }
 
     void update_chassis_velocity_expected(const Eigen::Vector3d& chassis_acceleration) {
@@ -449,7 +432,6 @@ private:
     const double wheel_radius_;
     const double friction_coefficient_;
 
-    const double k1_, k2_, no_load_power_;
 
     InputInterface<Eigen::Vector2d> joystick_right_;
     InputInterface<Eigen::Vector2d> joystick_left_;
@@ -502,4 +484,4 @@ private:
 #include <pluginlib/class_list_macros.hpp>
 
 PLUGINLIB_EXPORT_CLASS(
-    rmcs_core::controller::chassis::SteeringWheelController, rmcs_executor::Component)
+    rmcs_core::controller::chassis::VescT4SteeringWheelController, rmcs_executor::Component)

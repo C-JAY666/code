@@ -35,7 +35,7 @@ public:
 
     Vector update(Vector err) {
         Vector control = kp * err + ki * err_integral_;
-        err_integral_  = exclude_nan(clamp(err_integral_ + err, integral_min, integral_max));
+        err_integral_  = exclude_nan(clamp(err_integral_ + err, integral_min, integral_max));            //第一次：err - NaN = NaN → exclude_nan 转为 0
 
         control += exclude_nan(kd * (err - last_err_));
         last_err_ = err;
