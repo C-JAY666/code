@@ -20,10 +20,10 @@ rmcs_executor:
 test_hardware:
   ros__parameters:
     usb_pid_bottom_board: 0x4143
-    left_front_zero_point: 169
+    left_front_zero_point: 4380
     left_back_zero_point: 2363
-    right_back_zero_point: 444
-    right_front_zero_point: 3898
+    right_back_zero_point: 341
+    right_front_zero_point: 3795
 
 power_provider:
   ros__parameters:

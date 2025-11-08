@@ -24,21 +24,24 @@ public:
     explicit VescT4SteeringWheelController()
         : Node(
               get_component_name(),
-              rclcpp::NodeOptions{}.automatically_declare_parameters_from_overrides(true))
-        , mess_(get_parameter("mess").as_double())
-        , moment_of_inertia_(get_parameter("moment_of_inertia").as_double())
+              rclcpp::NodeOptions{}.automatically_declare_parameters_from_overrides(true))   
+/*         , mess_(get_parameter("mess").as_double())
+        , moment_of_inertia_(get_parameter("moment_of_inertia").as_double()) */
         , vehicle_radius_(get_parameter("vehicle_radius").as_double())
         , wheel_radius_(get_parameter("wheel_radius").as_double())
         , friction_coefficient_(get_parameter("friction_coefficient").as_double())
         , control_acceleration_filter_(5.0, 1000.0) 
         , chassis_velocity_expected_(Eigen::Vector3d::Zero())
-        , chassis_translational_velocity_pid_(1, 0.0, 0.5)
-        , chassis_angular_velocity_pid_(1, 0.0, 0.5)
+        , chassis_translational_velocity_pid_(0.3, 0.0, 0.5)
+        , chassis_angular_velocity_pid_(0.3, 0.0, 0.5)
         , cos_varphi_(1, 0, -1, 0) // 0, pi/2, pi, 3pi/2
         , sin_varphi_(0, 1, 0, -1)
         , steering_velocity_pid_(0.15, 0.0, 0.0)
         , steering_angle_pid_(30.0, 0.0, 0.0)
-        , wheel_velocity_pid_(0.1, 0.0, 0.0) {
+        , wheel_velocity_pid_(0.002, 0.00, 0.001) {
+
+        mess_ = this->get_parameter("mess").as_double();
+        moment_of_inertia_ = this->get_parameter("moment_of_inertia").as_double();
 
         register_input("/remote/joystick/right", joystick_right_);
         register_input("/remote/joystick/left", joystick_left_);
@@ -376,7 +379,7 @@ private:
         const Eigen::Vector4d& wheel_pid_torques) {
 
         const auto& [ax, ay, az] = chassis_acceleration;
-        Eigen::Vector4d wheel_torques =
+         Eigen::Vector4d wheel_torques =
             wheel_radius_
             * (ax * mess_ * steering_status.cos_angle.array()
                + ay * mess_ * steering_status.sin_angle.array()
@@ -385,8 +388,8 @@ private:
                         - sin_varphi_.array() * steering_status.cos_angle.array())
                      / vehicle_radius_)
             / 4.0;
-
-       // wheel_torques += wheel_pid_torques;
+ 
+        wheel_torques += wheel_pid_torques;
 
         return wheel_torques;
     }
@@ -426,8 +429,8 @@ private:
     static constexpr double dt_ = 1e-3;
     static constexpr double g_ = 9.81;
 
-    const double mess_;
-    const double moment_of_inertia_;
+    double mess_;
+    double moment_of_inertia_;
     const double vehicle_radius_;
     const double wheel_radius_;
     const double friction_coefficient_;

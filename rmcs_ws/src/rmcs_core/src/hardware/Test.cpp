@@ -317,13 +317,13 @@ private:
                         
                         // ch3: 右摇杆垂直 -> vx（前后移动）
                         // ch2: 右摇杆水平 -> vy（左右移动）
-                        double vx = remoteData.ch3 / 360.0 * 5.0;      // 归一化并限速到1m/s
-                        double vy = remoteData.ch2 / 360.0 * 5.0;      // 归一化并限速到1m/s
+                        double vx = remoteData.ch3 / 360.0 * 10.0;      // 归一化并限速到1m/s
+                        double vy = remoteData.ch2 / 360.0 * 10.0;      // 归一化并限速到1m/s
                         double omega = remoteData.ch0 / 360.0 * 5.0;  
                         // RCLCPP_INFO(myrobot_.get_logger(), "SBUS: ch2=%d, ch3=%d", remoteData.ch2, remoteData.ch3); 
                         // // 控制底盘
-                        test_.chassis_control_velocity_->vector[0] = -vy;
-                        test_.chassis_control_velocity_->vector[1] = vx;
+                        test_.chassis_control_velocity_->vector[0] = vy;
+                        test_.chassis_control_velocity_->vector[1] = -vx;
                         test_.chassis_control_velocity_->vector[2] = -omega;
                         // ================== SE 按键处理 =================
                             if (remoteData.se != remote_last_key_state) {
@@ -526,17 +526,17 @@ chassis_wheel_motors_[0].configure(
 
 chassis_wheel_motors_[1].configure(
     device::VescMotor::Config()
-    .set_reversed()  // 左后：反向
+    //.set_reversed()  // 左后：反向
     .enable_multi_turn_angle());
 
 chassis_wheel_motors_[2].configure(
     device::VescMotor::Config()
-     .set_reversed()  // 右后：不反向
+     //.set_reversed()  // 右后：不反向
     .enable_multi_turn_angle());
 
 chassis_wheel_motors_[3].configure(
     device::VescMotor::Config()
-    .set_reversed()  // 右前：反向
+    //.set_reversed()  // 右前：反向
     .enable_multi_turn_angle());
                 chassis_steer_motors_[0].configure(
                     device::DjiMotor::Config{device::DjiMotor::Type::GM6020}

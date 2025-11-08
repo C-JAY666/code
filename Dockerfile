@@ -94,15 +94,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/*
 
-# Generate/load ssh key and setup unison
-RUN --mount=type=bind,target=/tmp/.ssh,source=.ssh,readonly=false \
-    cd /home/ubuntu && mkdir -p .ssh && \
-    if [ ! -f "/tmp/.ssh/id_rsa" ]; then ssh-keygen -N "" -f "/tmp/.ssh/id_rsa"; fi && \
-    cp -r /tmp/.ssh/* .ssh && \
-    chown -R 1000:1000 .ssh && chmod 600 .ssh/id_rsa && \
-    mkdir -p .unison && \
-    echo 'confirmbigdel = false' >> ".unison/default.prf" && \
-    chown -R 1000:1000 .unison
+    COPY --chown=1000:1000 .ssh/id_rsa /home/ubuntu/.ssh/id_rsa
+    COPY --chown=1000:1000 .ssh/id_rsa.pub /home/ubuntu/.ssh/id_rsa.pub
+    COPY --chown=1000:1000 .ssh/config /home/ubuntu/.ssh/config
+    RUN cd /home/ubuntu && \
+        chmod 700 .ssh && \
+        chmod 600 .ssh/id_rsa && \
+        chmod 644 .ssh/id_rsa.pub && \
+        chmod 644 .ssh/config && \
+        mkdir -p .unison && \
+        echo 'confirmbigdel = false' >> ".unison/default.prf" && \
+        chown -R 1000:1000 .unison
 
 # Install latest neovim
 RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz && \

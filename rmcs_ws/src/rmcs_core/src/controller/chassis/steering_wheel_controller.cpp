@@ -404,7 +404,7 @@ private:
                      / vehicle_radius_)
             / 4.0;
 
-        //wheel_torques += wheel_pid_torques;
+        wheel_torques += wheel_pid_torques;
 
         return wheel_torques;
     }
