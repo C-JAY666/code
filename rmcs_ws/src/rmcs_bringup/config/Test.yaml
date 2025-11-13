@@ -16,10 +16,10 @@ rmcs_executor:
       #- rmcs_core::controller::chassis::SteeringWheelController -> steering_wheel_controller
       #- rmcs_core::controller::chassis::VescSteeringWheelController -> vesc_steering_wheel_controller
       - rmcs_core::controller::chassis::VescT4SteeringWheelController -> vesc_t_4_steering_wheel_controller
-
+#4143  
 test_hardware:
   ros__parameters:
-    usb_pid_bottom_board: 0x4143
+    usb_pid_bottom_board: 0x1b1b
     left_front_zero_point: 4380
     left_back_zero_point: 2363
     right_back_zero_point: 341

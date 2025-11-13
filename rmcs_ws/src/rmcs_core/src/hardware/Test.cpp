@@ -518,7 +518,7 @@ class BottomBoard final : private librmcs::client::DMH7Board
                         .set_reversed()
                         .enable_multi_turn_angle() 
                     ); */
-                    // 替换第113-118行
+
 chassis_wheel_motors_[0].configure(
     device::VescMotor::Config()
      //.set_reversed()  // 左前：不反向

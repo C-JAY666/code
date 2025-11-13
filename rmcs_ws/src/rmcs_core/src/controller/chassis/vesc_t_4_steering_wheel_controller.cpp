@@ -34,7 +34,7 @@ public:
         , chassis_velocity_expected_(Eigen::Vector3d::Zero())
         , chassis_translational_velocity_pid_(0.3, 0.0, 0.5)
         , chassis_angular_velocity_pid_(0.3, 0.0, 0.5)
-        , cos_varphi_(1, 0, -1, 0) // 0, pi/2, pi, 3pi/2
+        , cos_varphi_(1, 0, -1, 0) // 0, pi/2, pi, 3pi/2           ////
         , sin_varphi_(0, 1, 0, -1)
         , steering_velocity_pid_(0.15, 0.0, 0.0)
         , steering_angle_pid_(30.0, 0.0, 0.0)
@@ -96,7 +96,7 @@ public:
         auto wheel_velocities = calculate_wheel_velocities();
         auto chassis_velocity = calculate_chassis_velocity(steering_status, wheel_velocities);
 
-        auto chassis_status_expected = calculate_chassis_status_expected(chassis_velocity);
+        auto chassis_status_expected = calculate_chassis_status_expected(chassis_velocity);  ////wheel
         auto chassis_control_velocity = calculate_chassis_control_velocity();
 
         auto chassis_acceleration = calculate_chassis_control_acceleration(
@@ -107,7 +107,7 @@ public:
             calculate_wheel_pid_torques(steering_status, wheel_velocities, chassis_status_expected);
 
             
-/*功率 */auto constrained_chassis_acceleration = constrain_chassis_control_acceleration(
+/* */auto constrained_chassis_acceleration = constrain_chassis_control_acceleration(
            chassis_acceleration);
         auto filtered_chassis_acceleration =                      //将约束后的加速度转换到odom坐标系 并进行低通滤波，在转换为base_link坐标系
             odom_to_base_link_vector(control_acceleration_filter_.update(
@@ -184,7 +184,7 @@ private:
             *right_back_steering_angle_,    //
             *right_front_steering_angle_    //
         };
-        steering_status.angle.array() -= std::numbers::pi / 4;   //应该是因为旋转才-45
+        steering_status.angle.array() -= std::numbers::pi / 4;   //应该是爲了試配遙控器（有點複雜）
         steering_status.cos_angle = steering_status.angle.array().cos();
         steering_status.sin_angle = steering_status.angle.array().sin();
 
@@ -227,7 +227,7 @@ private:
                  + moment_of_inertia_ * velocity.z() * velocity.z();
         };
         auto chassis_energy = calculate_energy(chassis_velocity);
-        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_); /* 在哪里更新？ */
+        auto chassis_energy_expected = calculate_energy(chassis_velocity_expected_); /* 在哪里更新？,这是第一次*/
         if (chassis_energy_expected > chassis_energy) {
             double k = std::sqrt(chassis_energy / chassis_energy_expected);                        //E=mv方2   最优
             chassis_velocity_expected_ *= k;
@@ -237,7 +237,7 @@ private:
         chassis_status_expected.velocity = odom_to_base_link_vector(chassis_velocity_expected_);
 
         const auto& [vx, vy, vz] = chassis_status_expected.velocity;
-        chassis_status_expected.wheel_velocity_x = vx - vehicle_radius_ * vz * sin_varphi_.array();  /* sin,cos是向量用叉乘 s，w*r叉乘（cos x,sin x） */
+        chassis_status_expected.wheel_velocity_x = vx - vehicle_radius_ * vz * sin_varphi_.array();  /* sin,cos是向量用叉乘 s，w*r叉乘（cos x,sin x）   (0, 0, z) x (cos x, sin x, 0) = (-z * sin x, z * cos x, 0)*/
         chassis_status_expected.wheel_velocity_y = vy + vehicle_radius_ * vz * cos_varphi_.array();
 
         return chassis_status_expected;
@@ -316,14 +316,14 @@ private:
             {rhombus_right, rhombus_top}, {no_power_constraint});
 
         Eigen::Vector3d best_acceleration;
-        best_acceleration << best_point.x() * translational_acceleration_direction,
+        best_acceleration << best_point.x() * translational_acceleration_direction,                     //向量
             best_point.y() * angular_acceleration_direction;
         return best_acceleration;
     }
 
 
 
-    Eigen::Vector4d calculate_steering_control_torques(
+    Eigen::Vector4d calculate_steering_control_torques(                                         //d（arctan（wheel_velocity_y/wheel_velocity_x））/dt
         const SteeringStatus& steering_status, const ChassisStatus& chassis_status_expected,
         const Eigen::Vector3d& chassis_acceleration) {
 
@@ -333,7 +333,7 @@ private:
         Eigen::Vector4d dot_r_squared = chassis_status_expected.wheel_velocity_x.array().square()
                                       + chassis_status_expected.wheel_velocity_y.array().square();
 
-        Eigen::Vector4d steering_control_velocities =                                   //逆运动学解算 
+        Eigen::Vector4d steering_control_velocities =                                   //逆运动学解算       角速度
             vx * ay - vy * ax - vz * (vx * vx + vy * vy)       
             + vehicle_radius_ * (az * vx - vz * (ax + vz * vy)) * cos_varphi_.array()      //vz * vy科氏力
             + vehicle_radius_ * (az * vy - vz * (ay - vz * vx)) * sin_varphi_.array();
@@ -361,7 +361,7 @@ private:
         Eigen::Vector4d steering_torques = steering_velocity_pid_.update(                   //rad/s
             steering_control_velocities
             + steering_angle_pid_.update(
-                (steering_control_angles - steering_status.angle).unaryExpr([](double diff) {
+                        (steering_control_angles - steering_status.angle).unaryExpr([](double diff) {
                     diff = std::fmod(diff, std::numbers::pi);         //取派因为舵轮可以反向旋转
                     if (diff < -std::numbers::pi / 2) {                    //控制在+90到-90度之间
                         diff += std::numbers::pi;
@@ -384,7 +384,7 @@ private:
             * (ax * mess_ * steering_status.cos_angle.array()
                + ay * mess_ * steering_status.sin_angle.array()
                + az * moment_of_inertia_
-                     * (cos_varphi_.array() * steering_status.sin_angle.array()               //sin(angle - varphi)
+                     * (cos_varphi_.array() * steering_status.sin_angle.array()               //sin(angle - varphi) //////T = F × r  T = I × α
                         - sin_varphi_.array() * steering_status.cos_angle.array())
                      / vehicle_radius_)
             / 4.0;
@@ -439,7 +439,7 @@ private:
     InputInterface<Eigen::Vector2d> joystick_right_;
     InputInterface<Eigen::Vector2d> joystick_left_;
 
-    InputInterface<double> left_front_steering_angle_;
+    InputInterface<double> left_front_steering_angle_;    
     InputInterface<double> left_back_steering_angle_;
     InputInterface<double> right_back_steering_angle_;
     InputInterface<double> right_front_steering_angle_;
