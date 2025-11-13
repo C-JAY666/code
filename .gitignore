@@ -71,4 +71,4 @@ record/
 # For temperary development
 develop_ws
 
-*.tar
+*.tarrmcs-runtime.tar
