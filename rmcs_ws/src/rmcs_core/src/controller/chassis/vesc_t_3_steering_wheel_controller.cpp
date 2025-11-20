@@ -37,11 +37,11 @@ public :
         ,chassis_velocity_expected_(Eigen::Vector3d::Zero())
         , chassis_translational_velocity_pid_(0.3, 0.0, 0.5)
         , chassis_angular_velocity_pid_(0.3, 0.0, 0.5)
-        , cos_varphi_(1, 0, 0) // 0, pi/2, pi, 3pi/2        /////////////////////////////////////////////////////////////////////////////////////
-        , sin_varphi_(0, 1,-1)
+        , cos_varphi_(1, -0.6, -0.6) // 0, pi/2, pi, 3pi/2        /////////////////////////////////////////////////////////////////////////////////////
+        , sin_varphi_(0, 0.8,  -0.8)
         , steering_velocity_pid_(0.15, 0.0, 0.0)
         , steering_angle_pid_(30.0, 0.0, 0.0)
-        , wheel_velocity_pid_(0.002, 0.00, 0.001) {
+        , wheel_velocity_pid_(0.00, 0.00, 0.00) {
         
         register_input("/chassis/front_steering/angle", front_steering_angle_);
         register_input("/chassis/left_back_steering/angle", left_back_steering_angle_);
@@ -106,6 +106,24 @@ public :
         auto wheel_torques = calculate_wheel_control_torques(
             steering_status , filtered_chassis_acceleration, wheel_pid_torques);
  
+             RCLCPP_INFO(get_logger(), "Streering torques: [%.3f, %.3f, %.3f, %.3f]",
+            steering_torques[0], steering_torques[1], 
+            steering_torques[2]);
+            RCLCPP_INFO(get_logger(), "Wheel PID torques: [%.3f, %.3f, %.3f, %.3f]",
+    wheel_pid_torques[0], wheel_pid_torques[1], 
+    wheel_pid_torques[2]);
+    RCLCPP_INFO(get_logger(), "Wheel velocities (actual): [%.3f, %.3f, %.3f, %.3f]",
+    wheel_velocities[0], wheel_velocities[1], 
+    wheel_velocities[2]);
+
+
+RCLCPP_INFO(get_logger(), "Wheel velocities (expected): [%.3f, %.3f, %.3f, %.3f]",
+chassis_status_expected.wheel_velocity_x[0] * steering_status.cos_angle[0] + 
+chassis_status_expected.wheel_velocity_y[0] * steering_status.sin_angle[0],
+chassis_status_expected.wheel_velocity_x[1] * steering_status.cos_angle[1] + 
+chassis_status_expected.wheel_velocity_y[1] * steering_status.sin_angle[1],
+chassis_status_expected.wheel_velocity_x[2] * steering_status.cos_angle[2] + 
+chassis_status_expected.wheel_velocity_y[2] * steering_status.sin_angle[2]);
         update_control_torques(steering_torques, wheel_torques);
         update_chassis_velocity_expected(filtered_chassis_acceleration);
     }
@@ -174,13 +192,18 @@ private:
     Eigen::Vector3d calculate_chassis_velocity(                    //正解
         const SteeringStatus& steering_status , const Eigen::Vector3d& wheel_velocities) const {
             Eigen::Vector3d velocity;
-            double one_quarter_r = wheel_radius_ / 4.0;
-            velocity.x() = one_quarter_r * wheel_velocities.dot(steering_status.cos_angle);
-            velocity.y() = one_quarter_r * wheel_velocities.dot(steering_status.sin_angle);
-            velocity.z() = one_quarter_r / vehicle_radius_
-                         * (wheel_velocities[0] * steering_status.sin_angle[0]
-                            - wheel_velocities[1] * std::cos(steering_status.angle[1] + 33.67 * std::numbers::pi / 180)            ///////////////////////////////////////////////////
-                            + wheel_velocities[2] * std::cos(steering_status.angle[2] - 33.67 * std::numbers::pi / 180));
+            double one_third_r = wheel_radius_ / 3.0;
+            velocity.x() = one_third_r * wheel_velocities.dot(steering_status.cos_angle);
+            velocity.y() = one_third_r * wheel_velocities.dot(steering_status.sin_angle);
+            velocity.z() = -one_third_r / vehicle_radius_
+                         * (- wheel_velocities[0] * steering_status.sin_angle[0]
+                            + wheel_velocities[1] * ( 
+                                steering_status.cos_angle[1] * sin_varphi_[1]
+                                - steering_status.sin_angle[1] * cos_varphi_[1])
+                            + wheel_velocities[2] * (  
+                                steering_status.cos_angle[2] * sin_varphi_[2]                               //V x r
+                                - steering_status.sin_angle[2] * cos_varphi_[2])                        ///////////////////////////////////////////////////////////
+                            );
             return velocity;
         }
 
@@ -306,8 +329,8 @@ private:
             if(dot_r_squared[i] > 1e-2) {
                 streeing_control_velocities[i] /= dot_r_squared[i];
                 steering_control_angles[i] = std::atan2(
-                    chassis_status_expected.wheel_velocity_x[i], 
-                    chassis_status_expected.wheel_velocity_y[i]);
+                    chassis_status_expected.wheel_velocity_y[i],
+                    chassis_status_expected.wheel_velocity_x[i]);
             } else {
                 auto x = ax - vehicle_radius_ * (az * sin_varphi_[i] + 0 * cos_varphi_[i]);
                 auto y = ay + vehicle_radius_ * (az * cos_varphi_[i] - 0 * sin_varphi_[i]);
@@ -326,7 +349,8 @@ private:
             streeing_control_velocities
             + steering_angle_pid_.update(  
                 (steering_control_angles - steering_status.angle).unaryExpr([](double diff) {
-                    diff = std::fmod(diff, std::numbers::pi);
+                    //diff = std::fmod(diff, std::numbers::pi);
+                    diff = std::remainder(diff, 2.0 * std::numbers::pi);
                     if(diff < -std::numbers::pi / 2){
                         diff += std::numbers::pi;
                     } else if (diff > std::numbers::pi / 2) {
@@ -352,7 +376,7 @@ private:
                     * ( steering_status.sin_angle.array() * cos_varphi_.array()
                        - steering_status.cos_angle.array() * sin_varphi_.array())
                        / vehicle_radius_)
-            / 4.0;
+            / 3.0;
         
         wheel_torque += wheel_pid_torques;
 

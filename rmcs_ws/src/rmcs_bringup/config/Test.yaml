@@ -6,7 +6,6 @@ rmcs_executor:
       
       - rmcs_core::broadcaster::DummyRemote -> dummy_remote
       #- rmcs_core::controller::chassis::SimpleChassisCommander -> simple_chassis_commander
-
       #- rmcs_core::controller::chassis::ChassisController -> chassis_controller
       
       # 固定功率提供者（替代ChassisPowerController，不限制功率）
@@ -14,16 +13,21 @@ rmcs_executor:
       
       # 舵轮控制器（电机控制）
       #- rmcs_core::controller::chassis::SteeringWheelController -> steering_wheel_controller
-      #- rmcs_core::controller::chassis::VescSteeringWheelController -> vesc_steering_wheel_controller
-      - rmcs_core::controller::chassis::VescT4SteeringWheelController -> vesc_t_4_steering_wheel_controller
+      #- rmcs_core::controller::chassis::VescT4SteeringWheelController -> vesc_t_4_steering_wheel_controller
+      - rmcs_core::controller::chassis::VescT3SteeringWheelController -> vesc_t_3_steering_wheel_controller
+
+
+      - rmcs_core::controller::gimbal::Motor -> motor
 #4143  
 test_hardware:
   ros__parameters:
-    usb_pid_bottom_board: 0x1b1b
-    left_front_zero_point: 4380
-    left_back_zero_point: 2363
-    right_back_zero_point: 341
+    usb_pid_bottom_board: 0x4143
+    left_front_zero_point: 1320
+    left_back_zero_point: 1396
+    right_back_zero_point: 6758
     right_front_zero_point: 3795
+
+
 
 power_provider:
   ros__parameters:
@@ -48,10 +52,66 @@ vesc_t_4_steering_wheel_controller:
       wheel_radius: 0.055           # 轮子半径 (m)
       friction_coefficient: 0.6     # 摩擦系数
 
+vesc_t_3_steering_wheel_controller:
+  ros__parameters:  
+      mass: 2.0                    # 车体质量 (kg)
+      moment_of_inertia: 0.5        # 转动惯量 (kg·m²)
+      vehicle_radius: 0.45          # 车体半径 (m)
+      wheel_radius: 0.055           # 轮子半径 (m)
+      friction_coefficient: 0.6     # 摩擦系数
 
-
-
-
-vesc_steering_wheel_controller:
+motor:
   ros__parameters:
-    wheel_radius: 0.055
+    # clip_turner 电机参数
+    clip_turner_angle_kp: 10.0
+    clip_turner_angle_ki: 0.0
+    clip_turner_angle_kd: 0.5
+    clip_turner_angle_output_min: 0.0
+    clip_turner_angle_output_max: 100.0
+    
+    clip_turner_velocity_kp: 10.0
+    clip_turner_velocity_ki: 0.0
+    clip_turner_velocity_kd: 0.0
+    clip_turner_velocity_output_min: -16384.0
+    clip_turner_velocity_output_max: 16384.0
+    
+    # rack_suction_telescopic 电机参数
+    rack_suction_telescopic_angle_kp: 10.0
+    rack_suction_telescopic_angle_ki: 0.0
+    rack_suction_telescopic_angle_kd: 0.5
+    rack_suction_telescopic_angle_output_min: -100.0
+    rack_suction_telescopic_angle_output_max: 100.0
+    
+    rack_suction_telescopic_velocity_kp: 10.0
+    rack_suction_telescopic_velocity_ki: 0.0
+    rack_suction_telescopic_velocity_kd: 0.0
+    rack_suction_telescopic_velocity_output_min: -16384.0
+    rack_suction_telescopic_velocity_output_max: 16384.0
+    
+    # rack_suction_updown 电机参数
+    rack_suction_updown_angle_kp: 10.0
+    rack_suction_updown_angle_ki: 0.0
+    rack_suction_updown_angle_kd: 0.5
+    rack_suction_updown_angle_output_min: -100.0
+    rack_suction_updown_angle_output_max: 100.0
+    
+    rack_suction_updown_velocity_kp: 10.0
+    rack_suction_updown_velocity_ki: 0.0
+    rack_suction_updown_velocity_kd: 0.0
+    rack_suction_updown_velocity_output_min: -16384.0
+    rack_suction_updown_velocity_output_max: 16384.0
+    
+    # rack_clip_updown 电机参数
+    rack_clip_updown_angle_kp: 30.0
+    rack_clip_updown_angle_ki: 0.0
+    rack_clip_updown_angle_kd: 0.5
+    rack_clip_updown_angle_output_min: -100.0
+    rack_clip_updown_angle_output_max: 100.0
+    
+    rack_clip_updown_velocity_kp: 0.5
+    rack_clip_updown_velocity_ki: 0.0
+    rack_clip_updown_velocity_kd: 0.0
+    rack_clip_updown_velocity_output_min: -16384.0
+    rack_clip_updown_velocity_output_max: 16384.0
+
+

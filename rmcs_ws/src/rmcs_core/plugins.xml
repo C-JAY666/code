@@ -116,7 +116,10 @@
   <class type="rmcs_core::controller::chassis::VescT4SteeringWheelController" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
-    <class type="rmcs_core::controller::chassis::VescT3SteeringWheelController" base_class_type="rmcs_executor::Component">
+  <class type="rmcs_core::controller::chassis::VescT3SteeringWheelController" base_class_type="rmcs_executor::Component">
+    <description>Test plugin.</description>
+  </class>
+  <class type="rmcs_core::controller::gimbal::Motor" base_class_type="rmcs_executor::Component">
     <description>Test plugin.</description>
   </class>
 </library>
