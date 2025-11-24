@@ -340,9 +340,10 @@ private:
                         
                         // ch3: 右摇杆垂直 -> vx（前后移动）
                         // ch2: 右摇杆水平 -> vy（左右移动）
-                        double vx = remoteData.ch3 / 360.0 * 10.0;      // 归一化并限速到1m/s
-                        double vy = remoteData.ch2 / 360.0 * 10.0;      // 归一化并限速到1m/s
-                        double omega = remoteData.ch0 / 360.0 * 3.0;  
+                        double vx = remoteData.ch3 / 360.0 * 5.0;      // 归一化并限速到1m/s
+                        double vy = remoteData.ch2 / 360.0 * 5.0;      // 归一化并限速到1m/s
+                        double omega = remoteData.ch0 / 360.0 * 5.0;
+                        double move = remoteData.ch1 / 360.0 * 50;  
                         // RCLCPP_INFO(myrobot_.get_logger(), "SBUS: ch2=%d, ch3=%d", remoteData.ch2, remoteData.ch3); 
                         // // 控制底盘
                         test_.chassis_control_velocity_->vector[0] = vx;
@@ -352,12 +353,9 @@ private:
                             if (remoteData.se != remote_last_key_state) {
                             if (remoteData.se == 1) {
                                 // SE 刚刚按下
-                                *test_.control_torques_[3] =  *test_.control_torques_[3] + 1.45;
                             } else {
                                 // SE 刚刚松开
-                                test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
-                                                ,GpioCmd::GPIO_PIN::Pin_0
-                                                ,GpioCmd::GPIO_STATE::HIGH);
+
                             }
                         }
                 
@@ -366,56 +364,71 @@ private:
                             switch (remoteData.sc){
                                 /* running */
                                 case 0:
+
+                                       
+
                                     if (remoteData.sb == 0) {                                                     
     
-/*                                       myrobot_.board_->gpio_ctrl_->multiple_gpio_state()
-                                                                    .set_gpio_config(Gpio_Port::GPIO_A, Gpio_Pin::Pin_3, Gpio_State::HIGH)
-                                                                    .set_gpio_config(Gpio_Port::GPIO_E, Gpio_Pin::Pin_3, Gpio_State::LOW)
-                                                                    .execute(); */
+                                        test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
+                                                        ,GpioCmd::GPIO_PIN::Pin_3
+                                                        ,GpioCmd::GPIO_STATE::LOW);
+                                                        
+                                        test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
+                                                        ,GpioCmd::GPIO_PIN::Pin_1
+                                                        ,GpioCmd::GPIO_STATE::HIGH);
+
+                                        
                                       
                                     } else if (remoteData.sb == 1) {
-                                        
-/*                                         myrobot_.board_->gpio_ctrl_->multiple_gpio_state()
-                                                                   .set_gpio_config(Gpio_Port::GPIO_A, Gpio_Pin::Pin_3, Gpio_State::LOW)
-                                                                   .set_gpio_config(Gpio_Port::GPIO_E, Gpio_Pin::Pin_3, Gpio_State::HIGH)
-                                                                   .execute(); */
-                                    } 
-                                    else if (remoteData.sb == 2) {
-                                        
-                                    }
+                                      test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
+                                             ,GpioCmd::GPIO_PIN::Pin_3
+                                                 ,GpioCmd::GPIO_STATE::HIGH);
+                                
+                                 test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
+                                                         ,GpioCmd::GPIO_PIN::Pin_1
+                                                        ,GpioCmd::GPIO_STATE::LOW);
+
+                                }
                                     break;
                 
                                 /* shooting */
                                 case 1:
-                                    if (remoteData.sb == 0) {
-                                        
-                                        
-                                    } else if (remoteData.sb == 1) {
+
                                        
-                                    } else if (remoteData.sb == 2) {
-    
-                                    }
-                                       
-                                    break;
+                                break;
                 
                                 /* dunking */
                                 case 2:
-                                    if (remoteData.sb == 0) {
+                                    if (remoteData.sb == 0) {                                                     
+    
+                                        test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
+                                                        ,GpioCmd::GPIO_PIN::Pin_3
+                                                        ,GpioCmd::GPIO_STATE::LOW);
+                                                        
+                                        test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
+                                                        ,GpioCmd::GPIO_PIN::Pin_1
+                                                        ,GpioCmd::GPIO_STATE::HIGH);
+
                                         
+                                      
                                     } else if (remoteData.sb == 1) {
-                                        
-                                    } else if (remoteData.sb == 2) {
-                                       
+                                     test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
+                                                ,GpioCmd::GPIO_PIN::Pin_3
+                                                ,GpioCmd::GPIO_STATE::HIGH);
+                                
+                                test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
+                                                        ,GpioCmd::GPIO_PIN::Pin_1
+                                                        ,GpioCmd::GPIO_STATE::LOW);
+                                
                                     }
-                                    break;
-                
-                            }
-                        } else 
+                            break;
+                        }  
                         // SE held dow
                         if (remoteData.se == remote_last_key_state && remoteData.se == 1) {
                             switch (remoteData.sc){
                                 case 0:
                                     if (remoteData.sb == 0) {
+                                        *test_.control_torques_[0] =  *test_.control_torques_[0] + 0.005;
                                         // ch3: 右摇杆垂直 -> vx（前后移动）
                                         // ch2: 右摇杆水平 -> vy（左右移动）
                                         // double vx = remoteData.ch3 / 360.0 * 2.0;      // 归一化并限速到2m/s
@@ -425,6 +438,7 @@ private:
                                         // // myrobot_.chassis_ctrl_->set_raw_target_vel_(vx, vy, omega);
                                         // RCLCPP_INFO(myrobot_.get_logger(), "SBUS: vx=%f, vy=%f, omega=%f", vx, vy, omega);
                                     } else if (remoteData.sb == 1) {
+                                         *test_.control_torques_[3] =  *test_.control_torques_[3] + 0.1;
                                         // ch3: 右摇杆垂直 -> vx（前后移动）
                                         // ch2: 右摇杆水平 -> omega（旋转速度）
                                         // double vx = remoteData.ch3 / 360.0 * 2.0;      // 归一化并限速到2m/s
@@ -439,7 +453,9 @@ private:
                 
                                 case 1:
                                     if (remoteData.sb == 0) {
+                                        *test_.control_torques_[0] =  *test_.control_torques_[0] - 0.005;
                                     } else if (remoteData.sb == 1) {
+                                        *test_.control_torques_[3] =  *test_.control_torques_[3] - 0.1;
                                     } else if (remoteData.sb == 2) {
                                     }
                                     break;
@@ -491,8 +507,9 @@ private:
                     //     setArmRealRadian(map<float>(remoteData.ch1,      -360, 360, ARM_INIT_THETA, ARM_MAX_THETA));
                     // }
                 
-                }
-                
+                 }
+                 };
+
                 Test& test_;
                 librmcs::client::GpioCommand gpio_cmd_;
 
@@ -504,6 +521,7 @@ private:
                 uint8_t sbus_last_key_state;
     
                 float pos = 0.0;
+           
         };
 class BottomBoard final : private librmcs::client::DMH7Board 
 {
@@ -541,7 +559,7 @@ class BottomBoard final : private librmcs::client::DMH7Board
             {
                 clip_turner_.configure(
                     device::DjiMotor::Config{device::DjiMotor::Type::M2006}
-                    .set_reduction_ratio(11.)
+                    //.set_reduction_ratio(11.)
                     .enable_multi_turn_angle()
                     .set_reversed());
                 rack_suction_telescopic_.configure(
@@ -674,7 +692,7 @@ class BottomBoard final : private librmcs::client::DMH7Board
 
                 for (int x = 0; x < 5; x++) {
                     if (test_.gpio[x] != 0 ){
-                    transmit_buffer_.add_can3_transmission(0x666, test_.gpio[x]);
+                    transmit_buffer_.add_can3_transmission(0x660 + x, test_.gpio[x]);
 
                     last_gpio_sent_[x] = test_.gpio[x];
                     test_.gpio[x] = 0;
@@ -751,6 +769,16 @@ class BottomBoard final : private librmcs::client::DMH7Board
 
             else if (can_id == 0x208)
                 chassis_steer_motors_[3].store_status(can_data);
+
+            else    if (can_id == 0x201)
+                clip_turner_.store_status(can_data);
+            else if (can_id == 0x202)
+                rack_suction_telescopic_.store_status(can_data);
+            else if (can_id == 0x203)
+                rack_suction_updown_.store_status(can_data);
+            else if (can_id == 0x204)
+                rack_clip_updown_.store_status(can_data);
+    
     
         }
 
@@ -780,7 +808,7 @@ class BottomBoard final : private librmcs::client::DMH7Board
         std::thread event_thread_;
 
 
-};
+    };
     
 
     std::shared_ptr<TestCommand> command_component_;

@@ -54,8 +54,8 @@ vesc_t_4_steering_wheel_controller:
 
 vesc_t_3_steering_wheel_controller:
   ros__parameters:  
-      mass: 2.0                    # 车体质量 (kg)
-      moment_of_inertia: 0.5        # 转动惯量 (kg·m²)
+      mass: 50.0                    # 车体质量 (kg)
+      moment_of_inertia: 2.0      # 转动惯量 (kg·m²)
       vehicle_radius: 0.45          # 车体半径 (m)
       wheel_radius: 0.055           # 轮子半径 (m)
       friction_coefficient: 0.6     # 摩擦系数
@@ -63,13 +63,13 @@ vesc_t_3_steering_wheel_controller:
 motor:
   ros__parameters:
     # clip_turner 电机参数
-    clip_turner_angle_kp: 10.0
+    clip_turner_angle_kp: 50.0
     clip_turner_angle_ki: 0.0
-    clip_turner_angle_kd: 0.5
-    clip_turner_angle_output_min: 0.0
+    clip_turner_angle_kd: 1.0
+    clip_turner_angle_output_min: -100.0
     clip_turner_angle_output_max: 100.0
     
-    clip_turner_velocity_kp: 10.0
+    clip_turner_velocity_kp: 0.01
     clip_turner_velocity_ki: 0.0
     clip_turner_velocity_kd: 0.0
     clip_turner_velocity_output_min: -16384.0

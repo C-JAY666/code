@@ -95,16 +95,30 @@ private:
     static double double_pid(const double& target_angles, const double& current_angle, const double& current_velocity,
                     pid::PidCalculator& angle_pid, pid::PidCalculator& velocity_pid, double& control_torque)
     {
+        double cv;
         if (!std::isnan(target_angles)) {
-            return velocity_pid.update(
+              cv = velocity_pid.update(
                 angle_pid.update(target_angles - current_angle)
                 - current_velocity
             );
+            return ramp(current_velocity, cv, 100);
         } else {
             return nan_;
         }
 
     }
+
+    static double ramp(double current_vel, double target_vel, double max_accel) {
+        double diff = target_vel - current_vel;
+        double max_delta = max_accel * 0.001;  // 1ms 周期
+        
+        if (std::abs(diff) > max_delta) {
+            return current_vel + (diff > 0 ? max_delta : -max_delta);
+        }
+        return target_vel;
+    }
+
+
     
     static constexpr double nan_ = std::numeric_limits<double>::quiet_NaN();
 
