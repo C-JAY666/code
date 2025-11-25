@@ -69,60 +69,85 @@ public:
         *control_torques_[0] = double_pid(
             *target_angles_[0], *current_angles_[0]
             ,*current_velocities_[0],clip_turner_angle_pid_
-            , clip_turner_velocity_pid_, *control_torques_[0]);
+            , clip_turner_velocity_pid_, ramps_[0]);
         
         // 电机1: rack_suction_telescopic
         *control_torques_[1] = double_pid(
             *target_angles_[1], *current_angles_[1]
             ,*current_velocities_[1],rack_suction_telescopic_angle_pid_
-            , rack_suction_telescopic_velocity_pid_, *control_torques_[1]);
+            , rack_suction_telescopic_velocity_pid_, ramps_[1]);
         
         // 电机2: rack_suction_updown
         *control_torques_[2] = double_pid(
             *target_angles_[2], *current_angles_[2]
             ,*current_velocities_[2],rack_suction_updown_angle_pid_
-            , rack_suction_updown_velocity_pid_, *control_torques_[2]);
+            , rack_suction_updown_velocity_pid_, ramps_[2]);
   
         
         // 电机3: rack_clip_updown
         *control_torques_[3] = double_pid(
             *target_angles_[3], *current_angles_[3]
             ,*current_velocities_[3],rack_clip_updown_angle_pid_
-            , rack_clip_updown_velocity_pid_, *control_torques_[3]);
+            , rack_clip_updown_velocity_pid_, ramps_[3]);
     }
 
 private:
+
+    static constexpr int MOTOR_COUNT = 4;
+
+    struct RampConfig {
+        double ramp_velocity = 0.0;      
+        double max_acceleration = 100.0;
+    };
+    
+    RampConfig ramps_[MOTOR_COUNT] = {
+        {0.0, 100.0},
+        {0.0, 100.0},
+        {0.0, 100.0},
+        {0.0, 200.0}
+    };
+
+   
     static double double_pid(const double& target_angles, const double& current_angle, const double& current_velocity,
-                    pid::PidCalculator& angle_pid, pid::PidCalculator& velocity_pid, double& control_torque)
+                    pid::PidCalculator& angle_pid, pid::PidCalculator& velocity_pid, RampConfig& ramp_cfg)
     {
-        double cv;
+
         if (!std::isnan(target_angles)) {
-              cv = velocity_pid.update(
-                angle_pid.update(target_angles - current_angle)
-                - current_velocity
-            );
-            return ramp(current_velocity, cv, 100);
+            //   return velocity_pid.update(
+            //     ramp (ramp_cfg.ramp_velocity, 
+            //         angle_pid.update(target_angles - current_angle)
+            //         , 100)
+            //     - current_velocity
+            // 
+        double desired_vel = angle_pid.update(target_angles - current_angle);
+        
+        double limited_vel = ramp(ramp_cfg.ramp_velocity, desired_vel, ramp_cfg.max_acceleration);
+        
+        return velocity_pid.update(limited_vel - current_velocity);
+              
         } else {
             return nan_;
         }
 
     }
 
-    static double ramp(double current_vel, double target_vel, double max_accel) {
+    static double ramp(double& current_vel, double target_vel, double max_accel) {
         double diff = target_vel - current_vel;
         double max_delta = max_accel * 0.001;  // 1ms 周期
         
         if (std::abs(diff) > max_delta) {
-            return current_vel + (diff > 0 ? max_delta : -max_delta);
+            return current_vel += (diff > 0 ? max_delta : -max_delta);
+        } else{
+            current_vel = target_vel;
         }
-        return target_vel;
+        return current_vel;
     }
 
 
     
     static constexpr double nan_ = std::numeric_limits<double>::quiet_NaN();
 
-    static constexpr int MOTOR_COUNT = 4;
+ 
 
     InputInterface<double> current_angles_[MOTOR_COUNT];      // 当前角度
     InputInterface<double> current_velocities_[MOTOR_COUNT];  // 当前速度
@@ -132,6 +157,7 @@ private:
     pid::PidCalculator clip_turner_velocity_pid_, rack_suction_telescopic_velocity_pid_, rack_suction_updown_velocity_pid_, rack_clip_updown_velocity_pid_;
 
     OutputInterface<double> control_torques_[MOTOR_COUNT];
+    double control_torques[MOTOR_COUNT] = {0.0, 0.0, 0.0, 0.0};
 };
 
 } // namespace rmcs_core::controller::gimbal

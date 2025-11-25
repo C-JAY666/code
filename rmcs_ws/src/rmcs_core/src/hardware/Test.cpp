@@ -350,7 +350,7 @@ private:
                         test_.chassis_control_velocity_->vector[1] = vy;
                         test_.chassis_control_velocity_->vector[2] = -omega;
                         // ================== SE 按键处理 =================
-                            if (remoteData.se != remote_last_key_state) {
+                         if (remoteData.se != remote_last_key_state) {
                             if (remoteData.se == 1) {
                                 // SE 刚刚按下
                             } else {
@@ -360,40 +360,27 @@ private:
                         }
                 
                         // SE 按下触发分支
-                        if (remoteData.se != remote_last_key_state && remoteData.se == 1) { 
+                        if ( remoteData.se == 1) { 
                             switch (remoteData.sc){
                                 /* running */
                                 case 0:
-
-                                       
-
-                                    if (remoteData.sb == 0) {                                                     
-    
-                                        test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
-                                                        ,GpioCmd::GPIO_PIN::Pin_3
-                                                        ,GpioCmd::GPIO_STATE::LOW);
-                                                        
-                                        test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
-                                                        ,GpioCmd::GPIO_PIN::Pin_1
-                                                        ,GpioCmd::GPIO_STATE::HIGH);
-
-                                        
-                                      
+                                    if (remoteData.sb == 0) {
+                                        *test_.control_torques_[ 0] =  *test_.control_torques_[0] + 0.005;
                                     } else if (remoteData.sb == 1) {
-                                      test_.gpio[1] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_E
-                                             ,GpioCmd::GPIO_PIN::Pin_3
-                                                 ,GpioCmd::GPIO_STATE::HIGH);
-                                
-                                 test_.gpio[2] = gpio_cmd_.set_gpio(GpioCmd::GPIO_PORT::Port_A
-                                                         ,GpioCmd::GPIO_PIN::Pin_1
-                                                        ,GpioCmd::GPIO_STATE::LOW);
-
-                                }
+                                        *test_.control_torques_[3] =  *test_.control_torques_[3] + 0.1;
+                                    } else if (remoteData.sb == 2) {
+                                    }
+                                       
                                     break;
                 
                                 /* shooting */
                                 case 1:
-
+                                    if (remoteData.sb == 0) {
+                                        *test_.control_torques_[ 0] =  *test_.control_torques_[0] - 0.005;
+                                    } else if (remoteData.sb == 1) {
+                                        *test_.control_torques_[3] =  *test_.control_torques_[3] - 0.1;
+                                    } else if (remoteData.sb == 2) {
+                                    }
                                        
                                 break;
                 
@@ -453,7 +440,7 @@ private:
                 
                                 case 1:
                                     if (remoteData.sb == 0) {
-                                        *test_.control_torques_[0] =  *test_.control_torques_[0] - 0.005;
+                                        *test_.control_torques_[ 0] =  *test_.control_torques_[0] - 0.005;
                                     } else if (remoteData.sb == 1) {
                                         *test_.control_torques_[3] =  *test_.control_torques_[3] - 0.1;
                                     } else if (remoteData.sb == 2) {
